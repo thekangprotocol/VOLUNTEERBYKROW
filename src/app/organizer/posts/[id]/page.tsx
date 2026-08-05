@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -16,8 +16,10 @@ import {
   Edit3,
   Trash2,
   UserCheck,
+  Loader2,
 } from 'lucide-react';
-import { MOCK_OPPORTUNITIES, MOCK_VOLUNTEER } from '@/lib/mockData';
+import { Opportunity } from '@/lib/types/database';
+import { getLocalOpportunities, fetchOpportunities } from '@/lib/opportunityStore';
 import { AppleButton } from '@/components/ui/AppleButton';
 import { AppleCard } from '@/components/ui/AppleCard';
 
@@ -38,7 +40,8 @@ export default function OrganizerPostDetailPage() {
   const router = useRouter();
   const id = params?.id as string;
 
-  const opportunity = MOCK_OPPORTUNITIES.find((o) => o.id === id) || MOCK_OPPORTUNITIES[0];
+  const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
+  const [loadingOpp, setLoadingOpp] = useState(true);
 
   const [volunteers, setVolunteers] = useState<VolunteerApplicant[]>([
     {
@@ -63,20 +66,28 @@ export default function OrganizerPostDetailPage() {
       joined_date: 'Aug 3, 2026',
       status: 'pending',
     },
-    {
-      id: 'vol-3',
-      name: 'Emily Chen',
-      age: 24,
-      city: 'Hamilton',
-      province: 'Ontario',
-      country: 'Canada',
-      avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&auto=format&fit=crop&q=80',
-      joined_date: 'Aug 4, 2026',
-      status: 'accepted',
-    },
   ]);
 
   const [messageNotice, setMessageNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check local storage first
+    const localOpps = getLocalOpportunities();
+    const foundLocal = localOpps.find((o) => o.id === id);
+    if (foundLocal) {
+      setOpportunity(foundLocal);
+      setLoadingOpp(false);
+    }
+
+    // Fetch from Supabase
+    fetchOpportunities().then((allOpps) => {
+      const foundLive = allOpps.find((o) => o.id === id);
+      if (foundLive) {
+        setOpportunity(foundLive);
+      }
+      setLoadingOpp(false);
+    });
+  }, [id]);
 
   const handleStatusChange = (volId: string, newStatus: 'accepted' | 'removed') => {
     setVolunteers(
@@ -93,6 +104,34 @@ export default function OrganizerPostDetailPage() {
     router.push('/organizer/posts');
   };
 
+  if (loadingOpp) {
+    return (
+      <div className="flex-1 min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
+        <Loader2 className="w-8 h-8 text-krow-brand animate-spin mb-3" />
+        <p className="text-sm font-semibold text-gray-500">Loading opportunity management...</p>
+      </div>
+    );
+  }
+
+  if (!opportunity) {
+    return (
+      <div className="flex-1 min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center space-y-4">
+        <div className="w-16 h-16 bg-purple-50 text-krow-brand rounded-full flex items-center justify-center mx-auto">
+          <MapPin className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900">Post Not Found</h2>
+        <p className="text-xs text-gray-500 max-w-xs">
+          This post may have been removed or deleted.
+        </p>
+        <Link href="/organizer/posts">
+          <AppleButton variant="primary" size="md">
+            Back to Posts
+          </AppleButton>
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 bg-white min-h-screen pb-12">
       {/* Top Banner with Floating Back Button */}
@@ -106,7 +145,7 @@ export default function OrganizerPostDetailPage() {
 
         <Link
           href="/organizer/posts"
-          className="absolute top-6 left-6 p-2.5 bg-white/80 backdrop-blur-md rounded-full text-gray-900 shadow-md hover:bg-white transition-all"
+          className="absolute top-6 left-6 p-2.5 bg-white/80 backdrop-blur-md rounded-full text-gray-900 shadow-md hover:bg-white transition-all z-10"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
@@ -151,7 +190,7 @@ export default function OrganizerPostDetailPage() {
           <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
             <span className="text-[11px] font-semibold text-gray-400 uppercase block">Location & Age</span>
             <span className="text-xs font-bold text-gray-900 block mt-0.5 truncate">{opportunity.location}</span>
-            <span className="text-[11px] text-krow-brand font-semibold">Min Age: {opportunity.minimum_age}+</span>
+            <span className="text-[11px] text-krow-brand font-semibold">Min Age: {opportunity.minimum_age || 0}+</span>
           </div>
         </div>
 
@@ -171,7 +210,7 @@ export default function OrganizerPostDetailPage() {
             <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
               <Users className="w-5 h-5 text-krow-brand" /> Registered Volunteers ({volunteers.filter(v => v.status !== 'removed').length})
             </h3>
-            <span className="text-xs font-semibold text-gray-500">Max Cap: {opportunity.max_volunteers}</span>
+            <span className="text-xs font-semibold text-gray-500">Max Cap: {opportunity.max_volunteers || 20}</span>
           </div>
 
           <div className="space-y-3">

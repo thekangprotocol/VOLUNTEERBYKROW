@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { motion } from 'framer-motion';
 import {
   ArrowLeft,
   Calendar,
@@ -17,31 +16,83 @@ import {
   Mail,
   Phone,
   XCircle,
+  Loader2,
 } from 'lucide-react';
-import { MOCK_OPPORTUNITIES } from '@/lib/mockData';
+import { Opportunity } from '@/lib/types/database';
+import { getLocalOpportunities, fetchOpportunities } from '@/lib/opportunityStore';
 import { AppleButton } from '@/components/ui/AppleButton';
 
 export default function OpportunityDetailPage() {
   const params = useParams();
   const id = params?.id as string;
 
-  const opportunity = MOCK_OPPORTUNITIES.find((o) => o.id === id) || MOCK_OPPORTUNITIES[0];
+  const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
+  const [loadingOpp, setLoadingOpp] = useState(true);
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const [isRegistered, setIsRegistered] = useState(opportunity.is_registered || false);
-  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    // Check local storage first
+    const localOpps = getLocalOpportunities();
+    const foundLocal = localOpps.find((o) => o.id === id);
+    if (foundLocal) {
+      setOpportunity(foundLocal);
+      setIsRegistered(foundLocal.is_registered || false);
+      setLoadingOpp(false);
+    }
+
+    // Fetch from Supabase
+    fetchOpportunities().then((allOpps) => {
+      const foundLive = allOpps.find((o) => o.id === id);
+      if (foundLive) {
+        setOpportunity(foundLive);
+        setIsRegistered(foundLive.is_registered || false);
+      }
+      setLoadingOpp(false);
+    });
+  }, [id]);
 
   const handleToggleRegistration = () => {
-    setLoading(true);
+    setActionLoading(true);
     setTimeout(() => {
-      setLoading(false);
+      setActionLoading(false);
       setIsRegistered(!isRegistered);
     }, 400);
   };
 
-  const spotsRemaining = opportunity.max_volunteers - (opportunity.registrations_count || 0) + (isRegistered ? -1 : 0);
+  if (loadingOpp) {
+    return (
+      <div className="flex-1 min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
+        <Loader2 className="w-8 h-8 text-krow-brand animate-spin mb-3" />
+        <p className="text-sm font-semibold text-gray-500">Loading opportunity details...</p>
+      </div>
+    );
+  }
+
+  if (!opportunity) {
+    return (
+      <div className="flex-1 min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center space-y-4">
+        <div className="w-16 h-16 bg-purple-50 text-krow-brand rounded-full flex items-center justify-center mx-auto">
+          <MapPin className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900">Opportunity Not Found</h2>
+        <p className="text-xs text-gray-500 max-w-xs">
+          This opportunity may have been removed or is no longer available.
+        </p>
+        <Link href="/volunteer/discover">
+          <AppleButton variant="primary" size="md">
+            Back to Discover
+          </AppleButton>
+        </Link>
+      </div>
+    );
+  }
+
+  const spotsRemaining =
+    (opportunity.max_volunteers || 20) - (opportunity.registrations_count || 0) + (isRegistered ? -1 : 0);
 
   return (
-    <div className="flex-1 bg-white min-h-screen">
+    <div className="flex-1 bg-white min-h-screen pb-12">
       {/* Top Banner with Floating Back Button */}
       <div className="relative h-64 w-full bg-gray-900">
         <img
@@ -53,7 +104,7 @@ export default function OpportunityDetailPage() {
 
         <Link
           href="/volunteer/discover"
-          className="absolute top-6 left-6 p-2.5 bg-white/80 backdrop-blur-md rounded-full text-gray-900 shadow-md hover:bg-white transition-all"
+          className="absolute top-6 left-6 p-2.5 bg-white/80 backdrop-blur-md rounded-full text-gray-900 shadow-md hover:bg-white transition-all z-10"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
@@ -69,19 +120,21 @@ export default function OpportunityDetailPage() {
             className="w-12 h-12 rounded-2xl object-cover border border-gray-200"
           />
           <div>
-            <h4 className="text-sm font-bold text-gray-900">{opportunity.organization?.name}</h4>
-            <p className="text-xs text-apple-subtext">{opportunity.organization?.location}</p>
+            <h4 className="text-sm font-bold text-gray-900">
+              {opportunity.organization?.name || 'Community Organization'}
+            </h4>
+            <p className="text-xs text-apple-subtext">{opportunity.location}</p>
           </div>
         </div>
 
         {/* Opportunity Title & Badges */}
         <div>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="bg-purple-100 text-krow-brand text-xs font-bold px-3 py-1 rounded-full">
-              Minimum Age {opportunity.minimum_age}+
+              Minimum Age {opportunity.minimum_age || 0}+
             </span>
             <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1">
-              <Users className="w-3.5 h-3.5" /> {spotsRemaining} Spots Remaining
+              <Users className="w-3.5 h-3.5" /> {Math.max(0, spotsRemaining)} Spots Remaining
             </span>
           </div>
           <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">
@@ -105,10 +158,10 @@ export default function OpportunityDetailPage() {
                 size="md"
                 fullWidth
                 onClick={handleToggleRegistration}
-                disabled={loading}
+                disabled={actionLoading}
                 icon={<XCircle className="w-4 h-4 text-red-500" />}
               >
-                {loading ? 'Updating...' : 'Cancel Registration'}
+                {actionLoading ? 'Updating...' : 'Cancel Registration'}
               </AppleButton>
             </div>
           ) : (
@@ -117,9 +170,9 @@ export default function OpportunityDetailPage() {
               size="lg"
               fullWidth
               onClick={handleToggleRegistration}
-              disabled={loading}
+              disabled={actionLoading}
             >
-              {loading ? 'Processing...' : 'Sign Up For Opportunity'}
+              {actionLoading ? 'Processing...' : 'Sign Up For Opportunity'}
             </AppleButton>
           )}
         </div>
@@ -198,7 +251,7 @@ export default function OpportunityDetailPage() {
           <div className="flex flex-col gap-1.5 text-xs text-gray-700 font-medium">
             <div className="flex items-center gap-2">
               <Mail className="w-4 h-4 text-krow-brand" />
-              <span>{opportunity.contact_email}</span>
+              <span>{opportunity.contact_email || 'info@krow.org'}</span>
             </div>
             {opportunity.contact_phone && (
               <div className="flex items-center gap-2">
