@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Upload, Sparkles } from 'lucide-react';
 import { AppleButton } from '@/components/ui/AppleButton';
+import { saveLocalOpportunity } from '@/lib/opportunityStore';
 
 export default function CreateOpportunityPage() {
   const router = useRouter();
@@ -30,6 +31,40 @@ export default function CreateOpportunityPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    const newOpp = {
+      id: `opp-${Date.now()}`,
+      organization_id: 'org-krow-community',
+      title: title || 'Volunteer Opportunity',
+      description: description || 'No description provided.',
+      banner_url: bannerUrl || 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&auto=format&fit=crop&q=80',
+      date,
+      start_time: startTime,
+      end_time: endTime,
+      location,
+      minimum_age: parseInt(minimumAge, 10) || 14,
+      max_volunteers: parseInt(maxVolunteers, 10) || 20,
+      requirements,
+      parking_info: parkingInfo,
+      accessibility_notes: accessibilityNotes,
+      contact_email: contactEmail,
+      contact_phone: contactPhone,
+      created_at: new Date().toISOString(),
+      organization: {
+        id: 'org-krow-community',
+        owner_id: 'user-organizer',
+        name: 'Community Action Group',
+        description: 'Community initiatives',
+        logo_url: null,
+        banner_url: null,
+        location,
+        created_at: new Date().toISOString(),
+      },
+      registrations_count: 0,
+      is_registered: false,
+    };
+
+    saveLocalOpportunity(newOpp);
 
     setTimeout(() => {
       setLoading(false);

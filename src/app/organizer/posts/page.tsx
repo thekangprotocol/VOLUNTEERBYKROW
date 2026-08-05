@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Plus, Users, Calendar, MapPin, Edit3, Trash2, Layers } from 'lucide-react';
@@ -8,9 +8,17 @@ import { MOCK_OPPORTUNITIES } from '@/lib/mockData';
 import { AppleCard } from '@/components/ui/AppleCard';
 import { AppleButton } from '@/components/ui/AppleButton';
 import { KrowLogo } from '@/components/ui/KrowLogo';
+import { getLocalOpportunities } from '@/lib/opportunityStore';
 
 export default function OrganizerPostsPage() {
   const [opportunities, setOpportunities] = useState(MOCK_OPPORTUNITIES);
+
+  useEffect(() => {
+    const published = getLocalOpportunities();
+    if (published.length > 0) {
+      setOpportunities(published);
+    }
+  }, []);
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.preventDefault();

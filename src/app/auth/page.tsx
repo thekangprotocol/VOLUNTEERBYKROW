@@ -14,12 +14,15 @@ function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialMode = searchParams.get('mode') === 'login' ? 'login' : 'signup';
+  const targetRole = searchParams.get('role') === 'organizer' ? 'organizer' : 'volunteer';
 
   const [mode, setMode] = useState<'signup' | 'login'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const destinationRoute = targetRole === 'organizer' ? '/onboarding/organizer' : '/onboarding/volunteer';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +36,7 @@ function AuthForm() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?role=${targetRole}`,
           },
         });
         if (error) setErrorMessage(error.message);
@@ -48,7 +51,7 @@ function AuthForm() {
       console.log('Auth note:', err?.message);
     } finally {
       setLoading(false);
-      router.push('/onboarding/role');
+      router.push(destinationRoute);
     }
   };
 
@@ -60,7 +63,7 @@ function AuthForm() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?role=${targetRole}`,
         },
       });
       if (error) {
@@ -69,7 +72,7 @@ function AuthForm() {
       }
     } catch (err: any) {
       setLoading(false);
-      router.push('/onboarding/role');
+      router.push(destinationRoute);
     }
   };
 
@@ -82,11 +85,19 @@ function AuthForm() {
     >
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-          {mode === 'signup' ? 'Create Account' : 'Welcome Back'}
+          {mode === 'signup'
+            ? targetRole === 'organizer'
+              ? 'Create Organization Account'
+              : 'Create Volunteer Account'
+            : 'Welcome Back'}
         </h1>
         <p className="text-sm text-apple-subtext mt-1">
           {mode === 'signup'
-            ? 'Join Volunteer by Krow to make a difference'
+            ? targetRole === 'organizer'
+              ? 'Join Organization by Krow to post opportunities'
+              : 'Join Volunteer by Krow to start making an impact'
+            : targetRole === 'organizer'
+            ? 'Log in to manage your organization posts'
             : 'Log in to continue your volunteer journey'}
         </p>
       </div>

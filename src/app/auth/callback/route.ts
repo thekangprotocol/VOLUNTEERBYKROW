@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
+  const role = requestUrl.searchParams.get('role');
   const origin = requestUrl.origin;
 
   if (code) {
@@ -11,6 +12,6 @@ export async function GET(request: Request) {
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  // URL to redirect to after sign in process completes
-  return NextResponse.redirect(`${origin}/onboarding/role`);
+  const destination = role === 'organizer' ? '/onboarding/organizer' : '/onboarding/volunteer';
+  return NextResponse.redirect(`${origin}${destination}`);
 }
