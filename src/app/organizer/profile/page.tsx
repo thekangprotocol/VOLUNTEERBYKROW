@@ -17,6 +17,7 @@ import {
 import { MOCK_ORGANIZATION } from '@/lib/mockData';
 import { AppleButton } from '@/components/ui/AppleButton';
 import { KrowLogo } from '@/components/ui/KrowLogo';
+import { createClient } from '@/lib/supabase/client';
 
 export default function OrganizationProfilePage() {
   const router = useRouter();
@@ -50,16 +51,39 @@ export default function OrganizationProfilePage() {
     setTimeout(() => setSaving(false), 500);
   };
 
-  const handleLogOut = () => {
-    router.push('/');
+  const handleLogOut = async () => {
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.log('Signout note:', err);
+    } finally {
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+      }
+      router.push('/');
+    }
   };
 
-  const handleDeleteOrganization = () => {
+  const handleDeleteOrganization = async () => {
     setDeleting(true);
-    setTimeout(() => {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('users').delete().eq('id', user.id);
+        await supabase.from('organizations').delete().eq('owner_id', user.id);
+      }
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.log('Delete organization note:', err);
+    } finally {
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+      }
       setDeleting(false);
       router.push('/');
-    }, 800);
+    }
   };
 
   return (

@@ -64,6 +64,9 @@ function AuthForm() {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback?role=${targetRole}`,
+          queryParams: {
+            prompt: 'select_account',
+          },
         },
       });
       if (error) {
