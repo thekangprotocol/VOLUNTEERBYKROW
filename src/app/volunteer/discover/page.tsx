@@ -7,19 +7,28 @@ import { Search, MapPin, Calendar, Clock, Users, Filter, Sparkles } from 'lucide
 import { AppleCard } from '@/components/ui/AppleCard';
 import { MOCK_OPPORTUNITIES } from '@/lib/mockData';
 import { KrowLogo } from '@/components/ui/KrowLogo';
-import { getLocalOpportunities } from '@/lib/opportunityStore';
+import { getLocalOpportunities, fetchOpportunities } from '@/lib/opportunityStore';
 import { Opportunity } from '@/lib/types/database';
 
 export default function DiscoverPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'All' | 'Nearby' | 'Newest' | 'Date' | 'Age' | 'City'>('All');
   const [opportunities, setOpportunities] = useState<Opportunity[]>(MOCK_OPPORTUNITIES);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const published = getLocalOpportunities();
-    if (published.length > 0) {
-      setOpportunities(published);
+    // Load instant local cache first
+    const localData = getLocalOpportunities();
+    if (localData.length > 0) {
+      setOpportunities(localData);
     }
+    // Fetch live opportunities from Supabase
+    fetchOpportunities().then((liveData) => {
+      if (liveData && liveData.length > 0) {
+        setOpportunities(liveData);
+      }
+      setLoading(false);
+    });
   }, []);
 
   const filteredOpportunities = opportunities.filter((opp) => {
@@ -28,8 +37,6 @@ export default function DiscoverPage() {
       opp.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       opp.location.toLowerCase().includes(searchQuery.toLowerCase());
 
-    if (activeFilter === 'Nearby') return matchesSearch && opp.location.includes('Toronto');
-    if (activeFilter === 'City') return matchesSearch && opp.location.includes('Toronto');
     return matchesSearch;
   });
 
