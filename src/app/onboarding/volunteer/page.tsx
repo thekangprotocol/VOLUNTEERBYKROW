@@ -9,6 +9,7 @@ import { AppleButton } from '@/components/ui/AppleButton';
 import { KrowLogo } from '@/components/ui/KrowLogo';
 import { AccountMode } from '@/lib/types/database';
 import { saveProfile } from '@/lib/profileStore';
+import { createClient } from '@/lib/supabase/client';
 
 export default function VolunteerOnboardingPage() {
   const router = useRouter();
@@ -48,9 +49,9 @@ export default function VolunteerOnboardingPage() {
     setCity(newCities[0] || '');
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     setLoading(true);
-    saveProfile({
+    const updatedProfile = saveProfile({
       name: name.trim() || 'Volunteer',
       age: age ? parseInt(age, 10) : null,
       country,
@@ -60,6 +61,28 @@ export default function VolunteerOnboardingPage() {
       account_mode: accountMode,
       role: 'volunteer',
     });
+
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('users').upsert({
+          id: user.id,
+          email: user.email,
+          name: updatedProfile.name,
+          role: 'volunteer',
+          age: updatedProfile.age,
+          country: updatedProfile.country,
+          province: updatedProfile.province,
+          city: updatedProfile.city,
+          avatar_url: updatedProfile.avatar_url,
+          account_mode: updatedProfile.account_mode,
+        });
+      }
+    } catch (err) {
+      console.log('Volunteer onboarding sync note:', err);
+    }
+
     setTimeout(() => {
       setLoading(false);
       router.push('/volunteer/discover');

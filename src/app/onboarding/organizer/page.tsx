@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Building2, Plus, Trash2, Upload, Sparkles, MapPin, AlignLeft } from 'lucide-react';
 import { KrowLogo } from '@/components/ui/KrowLogo';
 import { AppleButton } from '@/components/ui/AppleButton';
+import { createClient } from '@/lib/supabase/client';
 
 export default function OrganizerOnboardingPage() {
   const router = useRouter();
@@ -33,9 +34,37 @@ export default function OrganizerOnboardingPage() {
     setOrganizers(organizers.filter((_, i) => i !== index));
   };
 
-  const handleFinish = (e: React.FormEvent) => {
+  const handleFinish = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Upsert user row
+        await supabase.from('users').upsert({
+          id: user.id,
+          email: user.email,
+          name: orgName,
+          role: 'organizer',
+          city: location,
+        });
+
+        // Upsert organization row
+        await supabase.from('organizations').upsert({
+          id: user.id,
+          owner_id: user.id,
+          name: orgName,
+          description: description,
+          location: location,
+          logo_url: logoUrl,
+          banner_url: bannerUrl,
+        });
+      }
+    } catch (err) {
+      console.log('Organizer onboarding sync note:', err);
+    }
 
     setTimeout(() => {
       setLoading(false);

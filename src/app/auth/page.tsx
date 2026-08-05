@@ -32,20 +32,38 @@ function AuthForm() {
     const supabase = createClient();
     try {
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback?role=${targetRole}`,
           },
         });
-        if (error) setErrorMessage(error.message);
+        if (error) {
+          setErrorMessage(error.message);
+        } else if (data?.user) {
+          await supabase.from('users').upsert({
+            id: data.user.id,
+            email: data.user.email || email,
+            name: email.split('@')[0] || 'User',
+            role: targetRole,
+          });
+        }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        if (error) setErrorMessage(error.message);
+        if (error) {
+          setErrorMessage(error.message);
+        } else if (data?.user) {
+          await supabase.from('users').upsert({
+            id: data.user.id,
+            email: data.user.email || email,
+            name: email.split('@')[0] || 'User',
+            role: targetRole,
+          });
+        }
       }
     } catch (err: any) {
       console.log('Auth note:', err?.message);
