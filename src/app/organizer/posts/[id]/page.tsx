@@ -19,7 +19,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Opportunity } from '@/lib/types/database';
-import { getLocalOpportunities, fetchOpportunities } from '@/lib/opportunityStore';
+import { getLocalOpportunities, fetchOpportunities, deleteOpportunity } from '@/lib/opportunityStore';
 import { AppleButton } from '@/components/ui/AppleButton';
 import { AppleCard } from '@/components/ui/AppleCard';
 
@@ -100,7 +100,10 @@ export default function OrganizerPostDetailPage() {
     setTimeout(() => setMessageNotice(null), 3000);
   };
 
-  const handleDeletePost = () => {
+  const handleDeletePost = async () => {
+    if (opportunity) {
+      await deleteOpportunity(opportunity.id);
+    }
     router.push('/organizer/posts');
   };
 

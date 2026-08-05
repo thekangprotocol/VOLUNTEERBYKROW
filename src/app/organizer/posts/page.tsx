@@ -8,7 +8,7 @@ import { MOCK_OPPORTUNITIES } from '@/lib/mockData';
 import { AppleCard } from '@/components/ui/AppleCard';
 import { AppleButton } from '@/components/ui/AppleButton';
 import { KrowLogo } from '@/components/ui/KrowLogo';
-import { getLocalOpportunities, fetchOpportunities } from '@/lib/opportunityStore';
+import { getLocalOpportunities, fetchOpportunities, deleteOpportunity } from '@/lib/opportunityStore';
 
 export default function OrganizerPostsPage() {
   const [opportunities, setOpportunities] = useState(MOCK_OPPORTUNITIES);
@@ -25,10 +25,11 @@ export default function OrganizerPostsPage() {
     });
   }, []);
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setOpportunities(opportunities.filter((o) => o.id !== id));
+    setOpportunities((prev) => prev.filter((o) => o.id !== id));
+    await deleteOpportunity(id);
   };
 
   return (

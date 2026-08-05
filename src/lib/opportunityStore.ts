@@ -138,3 +138,32 @@ export async function saveLocalOpportunity(opportunity: Opportunity): Promise<Op
 
   return updated;
 }
+
+export async function deleteOpportunity(id: string): Promise<Opportunity[]> {
+  // Update local storage
+  const current = getLocalOpportunities();
+  const updated = current.filter((o) => o.id !== id);
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(OPPORTUNITIES_KEY, JSON.stringify(updated));
+    } catch (err) {
+      console.error('Error updating localStorage after deletion:', err);
+    }
+  }
+
+  // Delete from Supabase
+  try {
+    const supabase = createClient();
+    const { error } = await supabase.from('opportunities').delete().eq('id', id);
+    if (error) {
+      console.error('Supabase opportunity delete error:', error.message);
+    } else {
+      console.log('Successfully deleted opportunity from Supabase');
+    }
+  } catch (err) {
+    console.error('Supabase delete exception:', err);
+  }
+
+  return updated;
+}
