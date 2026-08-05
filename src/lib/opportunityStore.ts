@@ -40,7 +40,7 @@ export async function fetchOpportunities(): Promise<Opportunity[]> {
     if (!error && data && data.length > 0) {
       const dbOpportunities: Opportunity[] = data.map((item: any) => ({
         id: item.id,
-        organization_id: item.organization_id,
+        organization_id: item.organization_id || 'org-default',
         title: item.title,
         description: item.description,
         banner_url: item.banner_url || 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&auto=format&fit=crop&q=80',
@@ -57,7 +57,7 @@ export async function fetchOpportunities(): Promise<Opportunity[]> {
         contact_phone: item.contact_phone,
         created_at: item.created_at,
         organization: {
-          id: item.organization_id,
+          id: item.organization_id || 'org-default',
           owner_id: 'org-owner',
           name: 'Community Organization',
           description: 'Local non-profit organization',
@@ -89,6 +89,7 @@ export async function saveLocalOpportunity(opportunity: Opportunity): Promise<Op
   
   // Ensure valid UUID for Supabase
   const validOppId = opportunity.id.includes('-') && opportunity.id.length >= 32 ? opportunity.id : generateUUID();
+  const validOrgId = generateUUID();
   const updatedOpp = { ...opportunity, id: validOppId };
   
   const updated = [updatedOpp, ...current];
@@ -101,39 +102,14 @@ export async function saveLocalOpportunity(opportunity: Opportunity): Promise<Op
     }
   }
 
-  // Sync to Supabase in robust 3-step sequence: users -> organizations -> opportunities
+  // Direct Supabase Insertion
   try {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
-    const userId = user ? user.id : '00000000-0000-4000-a000-000000000000';
-    const orgId = generateUUID();
-
-    // 1. Ensure user row exists in public.users
-    await supabase.from('users').upsert([
-      {
-        id: userId,
-        email: opportunity.contact_email || 'organizer@krow.org',
-        name: opportunity.organization?.name || 'Community Organizer',
-        role: 'organizer',
-      },
-    ]);
-
-    // 2. Ensure organization row exists in public.organizations
-    await supabase.from('organizations').upsert([
-      {
-        id: orgId,
-        owner_id: userId,
-        name: opportunity.organization?.name || 'Community Organization',
-        location: opportunity.location,
-      },
-    ]);
-
-    // 3. Insert opportunity row in public.opportunities
-    const { error } = await supabase.from('opportunities').insert([
+    const { data, error } = await supabase.from('opportunities').insert([
       {
         id: validOppId,
-        organization_id: orgId,
+        organization_id: validOrgId,
         title: opportunity.title,
         description: opportunity.description,
         banner_url: opportunity.banner_url,
