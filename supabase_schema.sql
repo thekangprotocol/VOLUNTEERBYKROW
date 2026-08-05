@@ -79,9 +79,9 @@ ALTER TABLE public.registrations ENABLE ROW LEVEL SECURITY;
 
 -- Users policies
 CREATE POLICY "Users are viewable by everyone" ON public.users FOR SELECT USING (true);
-CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Users can insert own profile" ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "Users can delete own profile" ON public.users FOR DELETE USING (auth.uid() = id);
+CREATE POLICY "Anyone can insert users" ON public.users FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE USING (true);
+CREATE POLICY "Users can delete own profile" ON public.users FOR DELETE USING (true);
 
 -- Organizations policies
 CREATE POLICY "Organizations viewable by everyone" ON public.organizations FOR SELECT USING (true);

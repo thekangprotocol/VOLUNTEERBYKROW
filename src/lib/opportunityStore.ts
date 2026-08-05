@@ -3,7 +3,6 @@ import { createClient } from './supabase/client';
 
 const OPPORTUNITIES_KEY = 'krow_published_opportunities';
 
-// Helper to generate a valid UUID v4 string
 function generateUUID(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
@@ -35,7 +34,8 @@ export async function fetchOpportunities(): Promise<Opportunity[]> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('opportunities')
-      .select('*, organization:organizations(*)');
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (!error && data && data.length > 0) {
       const dbOpportunities: Opportunity[] = data.map((item: any) => ({
@@ -56,16 +56,7 @@ export async function fetchOpportunities(): Promise<Opportunity[]> {
         contact_email: item.contact_email,
         contact_phone: item.contact_phone,
         created_at: item.created_at,
-        organization: item.organization ? {
-          id: item.organization.id,
-          owner_id: item.organization.owner_id,
-          name: item.organization.name,
-          description: item.organization.description,
-          logo_url: item.organization.logo_url,
-          banner_url: item.organization.banner_url,
-          location: item.organization.location,
-          created_at: item.organization.created_at,
-        } : {
+        organization: {
           id: item.organization_id,
           owner_id: 'org-owner',
           name: 'Community Organization',
@@ -110,74 +101,60 @@ export async function saveLocalOpportunity(opportunity: Opportunity): Promise<Op
     }
   }
 
-  // Sync to Supabase
+  // Sync to Supabase in robust 3-step sequence: users -> organizations -> opportunities
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const ownerId = user ? user.id : '00000000-0000-4000-a000-000000000000';
-    let orgId: string | null = null;
+    const userId = user ? user.id : '00000000-0000-4000-a000-000000000000';
+    const orgId = generateUUID();
 
-    // Check if an organization exists for this owner
-    const { data: orgData } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('owner_id', ownerId)
-      .limit(1)
-      .maybeSingle();
+    // 1. Ensure user row exists in public.users
+    await supabase.from('users').upsert([
+      {
+        id: userId,
+        email: opportunity.contact_email || 'organizer@krow.org',
+        name: opportunity.organization?.name || 'Community Organizer',
+        role: 'organizer',
+      },
+    ]);
 
-    if (orgData && orgData.id) {
-      orgId = orgData.id;
+    // 2. Ensure organization row exists in public.organizations
+    await supabase.from('organizations').upsert([
+      {
+        id: orgId,
+        owner_id: userId,
+        name: opportunity.organization?.name || 'Community Organization',
+        location: opportunity.location,
+      },
+    ]);
+
+    // 3. Insert opportunity row in public.opportunities
+    const { error } = await supabase.from('opportunities').insert([
+      {
+        id: validOppId,
+        organization_id: orgId,
+        title: opportunity.title,
+        description: opportunity.description,
+        banner_url: opportunity.banner_url,
+        date: opportunity.date,
+        start_time: opportunity.start_time,
+        end_time: opportunity.end_time,
+        location: opportunity.location,
+        minimum_age: opportunity.minimum_age,
+        max_volunteers: opportunity.max_volunteers,
+        requirements: opportunity.requirements,
+        parking_info: opportunity.parking_info,
+        accessibility_notes: opportunity.accessibility_notes,
+        contact_email: opportunity.contact_email,
+        contact_phone: opportunity.contact_phone,
+      },
+    ]);
+
+    if (error) {
+      console.error('Supabase opportunity insert error:', error.message);
     } else {
-      // Create an organization record
-      const newOrgId = generateUUID();
-      const { data: createdOrg, error: orgError } = await supabase
-        .from('organizations')
-        .insert([
-          {
-            id: newOrgId,
-            owner_id: ownerId,
-            name: opportunity.organization?.name || 'Community Organization',
-            location: opportunity.location,
-          },
-        ])
-        .select('id')
-        .maybeSingle();
-
-      if (createdOrg && createdOrg.id) {
-        orgId = createdOrg.id;
-      } else {
-        orgId = newOrgId;
-      }
-    }
-
-    if (orgId) {
-      const { error } = await supabase.from('opportunities').insert([
-        {
-          id: validOppId,
-          organization_id: orgId,
-          title: opportunity.title,
-          description: opportunity.description,
-          banner_url: opportunity.banner_url,
-          date: opportunity.date,
-          start_time: opportunity.start_time,
-          end_time: opportunity.end_time,
-          location: opportunity.location,
-          minimum_age: opportunity.minimum_age,
-          max_volunteers: opportunity.max_volunteers,
-          requirements: opportunity.requirements,
-          parking_info: opportunity.parking_info,
-          accessibility_notes: opportunity.accessibility_notes,
-          contact_email: opportunity.contact_email,
-          contact_phone: opportunity.contact_phone,
-        },
-      ]);
-
-      if (error) {
-        console.error('Supabase opportunity insert error:', error.message);
-      } else {
-        console.log('Successfully inserted opportunity into Supabase!');
-      }
+      console.log('Successfully inserted opportunity into Supabase!');
     }
   } catch (err) {
     console.error('Supabase sync exception:', err);
