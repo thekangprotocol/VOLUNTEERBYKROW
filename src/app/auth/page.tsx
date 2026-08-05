@@ -8,6 +8,8 @@ import { ArrowLeft, Mail, Lock, Sparkles } from 'lucide-react';
 import { KrowLogo } from '@/components/ui/KrowLogo';
 import { AppleButton } from '@/components/ui/AppleButton';
 
+import { createClient } from '@/lib/supabase/client';
+
 function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -17,24 +19,58 @@ function AuthForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage(null);
 
-    // Simulate Auth flow & redirect to Account Type Selection
-    setTimeout(() => {
+    const supabase = createClient();
+    try {
+      if (mode === 'signup') {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
+        if (error) setErrorMessage(error.message);
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) setErrorMessage(error.message);
+      }
+    } catch (err: any) {
+      console.log('Auth note:', err?.message);
+    } finally {
       setLoading(false);
       router.push('/onboarding/role');
-    }, 600);
+    }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setLoading(true);
-    setTimeout(() => {
+    setErrorMessage(null);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) {
+        setErrorMessage(error.message);
+        setLoading(false);
+      }
+    } catch (err: any) {
       setLoading(false);
       router.push('/onboarding/role');
-    }, 600);
+    }
   };
 
   return (

@@ -1,27 +1,37 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { User, MapPin, Camera, LogOut, Trash2, Save, Sparkles, AlertTriangle } from 'lucide-react';
-import { MOCK_VOLUNTEER } from '@/lib/mockData';
 import { LOCATIONS } from '@/lib/data/locations';
 import { AppleButton } from '@/components/ui/AppleButton';
 import { KrowLogo } from '@/components/ui/KrowLogo';
+import { getSavedProfile, saveProfile } from '@/lib/profileStore';
 
 export default function VolunteerProfilePage() {
   const router = useRouter();
 
-  const [name, setName] = useState(MOCK_VOLUNTEER.name || 'Alex Mercer');
-  const [age, setAge] = useState(MOCK_VOLUNTEER.age?.toString() || '22');
-  const [country, setCountry] = useState(MOCK_VOLUNTEER.country || 'Canada');
-  const [province, setProvince] = useState(MOCK_VOLUNTEER.province || 'Ontario');
-  const [city, setCity] = useState(MOCK_VOLUNTEER.city || 'Toronto');
-  const [avatarUrl, setAvatarUrl] = useState(MOCK_VOLUNTEER.avatar_url);
+  const [name, setName] = useState('');
+  const [age, setAge] = useState('');
+  const [country, setCountry] = useState('Canada');
+  const [province, setProvince] = useState('Ontario');
+  const [city, setCity] = useState('Toronto');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    const profile = getSavedProfile();
+    if (profile.name) setName(profile.name);
+    if (profile.age) setAge(profile.age.toString());
+    if (profile.country) setCountry(profile.country);
+    if (profile.province) setProvince(profile.province);
+    if (profile.city) setCity(profile.city);
+    if (profile.avatar_url) setAvatarUrl(profile.avatar_url);
+  }, []);
 
   const availableSubdivisions = Object.keys(LOCATIONS[country]?.subdivisions || {});
   const availableCities = LOCATIONS[country]?.subdivisions[province] || [];
@@ -46,6 +56,14 @@ export default function VolunteerProfilePage() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    saveProfile({
+      name,
+      age: age ? parseInt(age, 10) : null,
+      country,
+      province,
+      city,
+      avatar_url: avatarUrl,
+    });
     setTimeout(() => setSaving(false), 500);
   };
 

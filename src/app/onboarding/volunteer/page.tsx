@@ -8,6 +8,7 @@ import { LOCATIONS } from '@/lib/data/locations';
 import { AppleButton } from '@/components/ui/AppleButton';
 import { KrowLogo } from '@/components/ui/KrowLogo';
 import { AccountMode } from '@/lib/types/database';
+import { saveProfile } from '@/lib/profileStore';
 
 export default function VolunteerOnboardingPage() {
   const router = useRouter();
@@ -19,8 +20,8 @@ export default function VolunteerOnboardingPage() {
   const [province, setProvince] = useState<string>('Ontario');
   const [city, setCity] = useState<string>('Toronto');
 
-  const [name, setName] = useState<string>('Alex Mercer');
-  const [age, setAge] = useState<string>('22');
+  const [name, setName] = useState<string>('');
+  const [age, setAge] = useState<string>('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [accountMode, setAccountMode] = useState<AccountMode>('myself');
 
@@ -49,6 +50,16 @@ export default function VolunteerOnboardingPage() {
 
   const handleFinish = () => {
     setLoading(true);
+    saveProfile({
+      name: name.trim() || 'Volunteer',
+      age: age ? parseInt(age, 10) : null,
+      country,
+      province,
+      city,
+      avatar_url: avatarUrl,
+      account_mode: accountMode,
+      role: 'volunteer',
+    });
     setTimeout(() => {
       setLoading(false);
       router.push('/volunteer/discover');
