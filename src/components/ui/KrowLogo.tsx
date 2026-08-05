@@ -29,27 +29,11 @@ export const KrowLogo: React.FC<KrowLogoProps> = ({
 
   return (
     <div className={`inline-flex flex-col items-center justify-center ${className}`}>
-      {/* Crown / Crow Apple minimal icon */}
-      <div
-        className={`${dimensions} rounded-3xl bg-gradient-to-tr from-krow-900 via-krow-brand to-purple-500 shadow-apple-purple flex items-center justify-center p-3 relative overflow-hidden transition-transform duration-300 hover:scale-105`}
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="w-full h-full text-white drop-shadow-md"
-        >
-          {/* Stylized Krow Wings / Crown */}
-          <path d="M12 3L15 9.5L21 6L18 15H6L3 6L9 9.5L12 3Z" fill="currentColor" fillOpacity="0.2" />
-          <path d="M12 3L15 9.5L21 6L18 15H6L3 6L9 9.5L12 3Z" />
-          <circle cx="12" cy="18" r="1.5" fill="currentColor" />
-        </svg>
-        {/* Subtle glass shimmer overlay */}
-        <div className="absolute inset-0 bg-white/10 opacity-30 backdrop-blur-xs rounded-3xl pointer-events-none" />
-      </div>
+      <img
+        src="/logo.png"
+        alt="Volunteer by Krow Logo"
+        className={`${dimensions} object-contain transition-transform duration-300 hover:scale-105`}
+      />
 
       {showText && (
         <div className="mt-3 text-center tracking-tight font-bold text-gray-900">
