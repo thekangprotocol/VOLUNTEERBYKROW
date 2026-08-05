@@ -71,8 +71,14 @@ export default function OrganizationProfilePage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // Delete user and organization rows
         await supabase.from('users').delete().eq('id', user.id);
         await supabase.from('organizations').delete().eq('owner_id', user.id);
+        if (user.email) {
+          await supabase.from('users').delete().eq('email', user.email);
+          // Delete all opportunities created by this organizer
+          await supabase.from('opportunities').delete().eq('contact_email', user.email);
+        }
       }
       await supabase.auth.signOut();
     } catch (err) {

@@ -88,7 +88,13 @@ export default function VolunteerProfilePage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // Delete from public.users table
         await supabase.from('users').delete().eq('id', user.id);
+        if (user.email) {
+          await supabase.from('users').delete().eq('email', user.email);
+          // Delete any opportunities associated with user's email
+          await supabase.from('opportunities').delete().eq('contact_email', user.email);
+        }
       }
       await supabase.auth.signOut();
     } catch (err) {
