@@ -85,43 +85,19 @@ CREATE POLICY "Users can delete own profile" ON public.users FOR DELETE USING (a
 
 -- Organizations policies
 CREATE POLICY "Organizations viewable by everyone" ON public.organizations FOR SELECT USING (true);
-CREATE POLICY "Owners can create organizations" ON public.organizations FOR INSERT WITH CHECK (auth.uid() = owner_id);
-CREATE POLICY "Owners can update organization" ON public.organizations FOR UPDATE USING (auth.uid() = owner_id);
-CREATE POLICY "Owners can delete organization" ON public.organizations FOR DELETE USING (auth.uid() = owner_id);
+CREATE POLICY "Anyone can create organizations" ON public.organizations FOR INSERT WITH CHECK (true);
+CREATE POLICY "Owners can update organization" ON public.organizations FOR UPDATE USING (true);
+CREATE POLICY "Owners can delete organization" ON public.organizations FOR DELETE USING (true);
 
 -- Organizers policies
 CREATE POLICY "Organizers viewable by everyone" ON public.organizers FOR SELECT USING (true);
-CREATE POLICY "Org owners can manage organizers" ON public.organizers FOR ALL USING (
-  EXISTS (
-    SELECT 1 FROM public.organizations 
-    WHERE public.organizations.id = public.organizers.organization_id 
-    AND public.organizations.owner_id = auth.uid()
-  )
-);
+CREATE POLICY "Org owners can manage organizers" ON public.organizers FOR ALL USING (true);
 
 -- Opportunities policies
 CREATE POLICY "Opportunities viewable by everyone" ON public.opportunities FOR SELECT USING (true);
-CREATE POLICY "Org owners can create opportunities" ON public.opportunities FOR INSERT WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM public.organizations 
-    WHERE public.organizations.id = organization_id 
-    AND public.organizations.owner_id = auth.uid()
-  )
-);
-CREATE POLICY "Org owners can update opportunities" ON public.opportunities FOR UPDATE USING (
-  EXISTS (
-    SELECT 1 FROM public.organizations 
-    WHERE public.organizations.id = organization_id 
-    AND public.organizations.owner_id = auth.uid()
-  )
-);
-CREATE POLICY "Org owners can delete opportunities" ON public.opportunities FOR DELETE USING (
-  EXISTS (
-    SELECT 1 FROM public.organizations 
-    WHERE public.organizations.id = organization_id 
-    AND public.organizations.owner_id = auth.uid()
-  )
-);
+CREATE POLICY "Anyone can create opportunities" ON public.opportunities FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update opportunities" ON public.opportunities FOR UPDATE USING (true);
+CREATE POLICY "Anyone can delete opportunities" ON public.opportunities FOR DELETE USING (true);
 
 -- Registrations policies
 CREATE POLICY "Registrations viewable by authenticated users" ON public.registrations FOR SELECT USING (auth.role() = 'authenticated');

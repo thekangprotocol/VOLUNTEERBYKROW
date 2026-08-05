@@ -115,33 +115,39 @@ export async function saveLocalOpportunity(opportunity: Opportunity): Promise<Op
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Check if user has an organization, or create a default organization ID
+    const ownerId = user ? user.id : '00000000-0000-4000-a000-000000000000';
     let orgId: string | null = null;
-    if (user) {
-      const { data: orgData } = await supabase
+
+    // Check if an organization exists for this owner
+    const { data: orgData } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('owner_id', ownerId)
+      .limit(1)
+      .maybeSingle();
+
+    if (orgData && orgData.id) {
+      orgId = orgData.id;
+    } else {
+      // Create an organization record
+      const newOrgId = generateUUID();
+      const { data: createdOrg, error: orgError } = await supabase
         .from('organizations')
+        .insert([
+          {
+            id: newOrgId,
+            owner_id: ownerId,
+            name: opportunity.organization?.name || 'Community Organization',
+            location: opportunity.location,
+          },
+        ])
         .select('id')
-        .eq('owner_id', user.id)
         .maybeSingle();
 
-      if (orgData) {
-        orgId = orgData.id;
+      if (createdOrg && createdOrg.id) {
+        orgId = createdOrg.id;
       } else {
-        // Create an organization record for this user
-        const newOrgId = generateUUID();
-        const { data: createdOrg } = await supabase
-          .from('organizations')
-          .insert([
-            {
-              id: newOrgId,
-              owner_id: user.id,
-              name: opportunity.organization?.name || 'Community Organization',
-              location: opportunity.location,
-            },
-          ])
-          .select('id')
-          .single();
-        if (createdOrg) orgId = createdOrg.id;
+        orgId = newOrgId;
       }
     }
 
@@ -169,6 +175,8 @@ export async function saveLocalOpportunity(opportunity: Opportunity): Promise<Op
 
       if (error) {
         console.error('Supabase opportunity insert error:', error.message);
+      } else {
+        console.log('Successfully inserted opportunity into Supabase!');
       }
     }
   } catch (err) {
